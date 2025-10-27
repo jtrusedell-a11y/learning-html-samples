@@ -1,52 +1,570 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>HTML Learning Test Page</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.min.css"
-    />
-  </head>
-  <body>
-    <header>
-      <h1>
-        <abbr title="HyperText Markup Language">
-          HTML
-        </abbr>
-        Learning Page
-      </h1>
-    </header>
-    <main>
-      <p>Here is some sample text in a paragraph.</p>
-      <p>I want to <a href="about.html">link something</a>.</p>
-      <figure>
-        <img
-          src="assets/meche.png"
-          alt="Mèche, My Cat"
-          width="600"
-          height="438"
-        />
-        <figcaption>This is Mèche, my cat!</figcaption>
-      </figure>
-      <figure>
-        <blockquote>Hello World!</blockquote>
-        <figcaption>
-          Bill Gates in
-          <cite>My First Program</cite>,
-          probably
-        </figcaption>
-      </figure>
-    </main>
-    <footer>
-      <nav>
-        <ul>
-          <li><a href="#">Here</a></li>
-          <li><a href="#">Also here</a></li>
-          <li><a href="#">The same place</a></li>
-        </ul>
-      </nav>
-    </footer>
-  </body>
-</html>
+#!/usr/bin/env python3
+"""
+Adventure: A small text-adventure engine
+Save as adventure.py and run: python adventure.py
+"""
+
+import json
+import os
+import random
+import sys
+import textwrap
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+
+WRAP = 75
+
+def w(text=""):
+    print("\n".join(textwrap.fill(text, WRAP).splitlines()))
+
+def prompt(s="> "):
+    return input(s).strip()
+
+@dataclass
+class Item:
+    id: str
+    name: str
+    description: str
+    takeable: bool = True
+    usable: Optional[str] = None  # optional: 'heal', 'unlock', 'light', etc.
+    value: int = 0  # for future uses
+
+@dataclass
+class Enemy:
+    id: str
+    name: str
+    hp: int
+    attack: int
+    description: str
+
+@dataclass
+class Room:
+    id: str
+    name: str
+    description: str
+    exits: Dict[str, str] = field(default_factory=dict)  # direction -> room_id
+    items: List[str] = field(default_factory=list)  # list of item ids
+    locked: bool = False
+    lock_key: Optional[str] = None  # item.id that unlocks
+    enemy: Optional[str] = None  # enemy id
+
+@dataclass
+class Player:
+    hp: int = 20
+    max_hp: int = 20
+    inventory: List[str] = field(default_factory=list)
+    location: str = "village_green"
+    gold: int = 0
+
+class World:
+    def __init__(self):
+        self.items: Dict[str, Item] = {}
+        self.rooms: Dict[str, Room] = {}
+        self.enemies: Dict[str, Enemy] = {}
+        self.player = Player()
+        self.flags: Dict[str, bool] = {}
+        self._build_default_world()
+
+    def _build_default_world(self):
+        # Items
+        self.items["potion"] = Item("potion", "Small Potion", "Restores 8 HP when used.", usable="heal", value=8)
+        self.items["sword"] = Item("sword", "Rusty Sword", "Old but better than fists.", usable="equip")
+        self.items["torch"] = Item("torch", "Torch", "Lights dark places.", usable="light", takeable=True)
+        self.items["golden_key"] = Item("golden_key", "Golden Key", "Unlocks a magical door.", takeable=True)
+        self.items["note"] = Item("note", "Torn Note", "A note that reads: 'Seek the lake at sunrise.'", takeable=True)
+        self.items["gem"] = Item("gem", "Blue Gem", "A shimmering blue gem. It's valuable.", takeable=True, value=50)
+
+        # Enemies
+        self.enemies["goblin"] = Enemy("goblin", "Goblin", hp=12, attack=3, description="A disgruntled goblin blocks your way.")
+        self.enemies["wolf"] = Enemy("wolf", "Wild Wolf", hp=10, attack=4, description="A hungry wolf snarls.")
+        self.enemies["guardian"] = Enemy("guardian", "Stone Guardian", hp=18, attack=5, description="A magical guardian protects the chest.")
+
+        # Rooms
+        self.rooms["village_green"] = Room(
+            id="village_green",
+            name="Village Green",
+            description="A small village green with a well in the center. Paths lead north and east.",
+            exits={"north": "forest_entrance", "east": "inn"},
+            items=["note"],
+        )
+        self.rooms["inn"] = Room(
+            id="inn",
+            name="The Sleepy Boar (Inn)",
+            description="The inn smells of stew. A noticeboard hangs on the wall. You can rest here for a small fee (type 'rest').",
+            exits={"west": "village_green"},
+            items=[]
+        )
+        self.rooms["forest_entrance"] = Room(
+            id="forest_entrance",
+            name="Forest Entrance",
+            description="Tall trees stretch above. The forest path forks; a darker path heads north.",
+            exits={"south": "village_green", "north": "deep_forest", "east": "lake"},
+            items=["torch"]
+        )
+        self.rooms["deep_forest"] = Room(
+            id="deep_forest",
+            name="Deep Forest",
+            description="The forest is thick and shadowed. You hear distant growls.",
+            exits={"south": "forest_entrance"},
+            items=["sword"],
+            enemy="goblin"
+        )
+        self.rooms["lake"] = Room(
+            id="lake",
+            name="Misty Lake",
+            description="A mirror-smooth lake. The air feels magical at sunrise.",
+            exits={"west": "forest_entrance", "north": "ruins"},
+            items=["gem"]
+        )
+        self.rooms["ruins"] = Room(
+            id="ruins",
+            name="Ancient Ruins",
+            description="Old stones and a locked gate. There's a pedestal with a keyhole.",
+            exits={"south": "lake"},
+            items=[],
+            locked=True,
+            lock_key="golden_key"
+        )
+        self.rooms["cavern"] = Room(
+            id="cavern",
+            name="Shadow Cavern",
+            description="A dark cavern with shimmering minerals. The air is still.",
+            exits={"south": "deep_forest"},
+            items=["potion","golden_key"],
+            enemy="guardian"
+        )
+
+        # World flags (quest progress)
+        self.flags["found_key"] = False
+        self.flags["ruins_opened"] = False
+        self.flags["guardian_defeated"] = False
+
+    def save(self, filename="savegame.json"):
+        data = {
+            "player": self.player.__dict__,
+            "flags": self.flags,
+            "rooms": {rid: {"items": room.items, "locked": room.locked} for rid, room in self.rooms.items()},
+        }
+        with open(filename, "w") as f:
+            json.dump(data, f, indent=2)
+        w(f"Game saved to {filename}.")
+
+    def load(self, filename="savegame.json"):
+        if not os.path.exists(filename):
+            w("No save file found.")
+            return False
+        with open(filename, "r") as f:
+            data = json.load(f)
+        p = data.get("player", {})
+        self.player.hp = p.get("hp", self.player.hp)
+        self.player.max_hp = p.get("max_hp", self.player.max_hp)
+        self.player.inventory = p.get("inventory", [])
+        self.player.location = p.get("location", self.player.location)
+        self.player.gold = p.get("gold", self.player.gold)
+        self.flags.update(data.get("flags", {}))
+        rooms_data = data.get("rooms", {})
+        for rid, rd in rooms_data.items():
+            if rid in self.rooms:
+                self.rooms[rid].items = rd.get("items", self.rooms[rid].items)
+                self.rooms[rid].locked = rd.get("locked", self.rooms[rid].locked)
+        w(f"Loaded game from {filename}.")
+        return True
+
+# --- Game engine and commands ---
+class Game:
+    def __init__(self):
+        self.world = World()
+        self.player = self.world.player
+        self.running = True
+        self.equipped_weapon: Optional[str] = None
+
+    def intro(self):
+        w("Welcome to 'Echoes of the Lake' — a short text adventure.")
+        w("Objective: explore, find treasures, and solve the mystery of the ruins.")
+        w("Type 'help' for commands. Save with 'save', load with 'load'.")
+        self.look()
+
+    def current_room(self) -> Room:
+        return self.world.rooms[self.player.location]
+
+    def look(self, args=None):
+        room = self.current_room()
+        w(f"{room.name}")
+        w(room.description)
+        if room.items:
+            visible = [self.world.items[i].name for i in room.items]
+            w("You see: " + ", ".join(visible))
+        if room.enemy and not self.world.flags.get(f"{room.enemy}_defeated", False):
+            enemy = self.world.enemies[room.enemy]
+            w(enemy.description)
+        exits = ", ".join(room.exits.keys()) if room.exits else "none"
+        w(f"Exits: {exits}")
+
+    def status(self, args=None):
+        w(f"HP: {self.player.hp}/{self.player.max_hp}")
+        inv = [self.world.items[i].name for i in self.player.inventory] or ["(empty)"]
+        w("Inventory: " + ", ".join(inv))
+        if self.equipped_weapon:
+            w(f"Equipped: {self.world.items[self.equipped_weapon].name}")
+
+    def go(self, direction):
+        if not direction:
+            w("Go where?")
+            return
+        room = self.current_room()
+        direction = direction.lower()
+        if direction not in room.exits:
+            w("You can't go that way.")
+            return
+        dest_id = room.exits[direction]
+        dest = self.world.rooms[dest_id]
+        if dest.locked:
+            # check player's inventory for key
+            if dest.lock_key and dest.lock_key in self.player.inventory:
+                w(f"You use the {self.world.items[dest.lock_key].name} to unlock the way.")
+                dest.locked = False
+                self.world.flags["ruins_opened"] = True
+            else:
+                w("The way is locked.")
+                return
+        self.player.location = dest_id
+        # random encounter chance if there's an enemy
+        if dest.enemy and not self.world.flags.get(f"{dest.enemy}_defeated", False):
+            self.look()
+            # auto-engage
+            self.combat(dest.enemy)
+        else:
+            self.look()
+
+    def take(self, item_name):
+        room = self.current_room()
+        if not item_name:
+            w("Take what?")
+            return
+        # find item by name partial match
+        found = None
+        for iid in room.items:
+            if item_name.lower() in self.world.items[iid].name.lower():
+                found = iid
+                break
+        if not found:
+            w("There is no such item here.")
+            return
+        item = self.world.items[found]
+        if not item.takeable:
+            w("You can't take that.")
+            return
+        room.items.remove(found)
+        self.player.inventory.append(found)
+        w(f"You take the {item.name}.")
+        # special immediate effects
+        if found == "golden_key":
+            self.world.flags["found_key"] = True
+            w("You feel the key humming faintly...")
+
+    def drop(self, item_name):
+        if not item_name:
+            w("Drop what?")
+            return
+        found = None
+        for iid in self.player.inventory:
+            if item_name.lower() in self.world.items[iid].name.lower():
+                found = iid
+                break
+        if not found:
+            w("You're not carrying that.")
+            return
+        self.player.inventory.remove(found)
+        self.current_room().items.append(found)
+        w(f"You drop the {self.world.items[found].name}.")
+
+    def use(self, item_name):
+        if not item_name:
+            w("Use what?")
+            return
+        # find in inventory
+        found = None
+        for iid in self.player.inventory:
+            if item_name.lower() in self.world.items[iid].name.lower():
+                found = iid
+                break
+        if not found:
+            w("You don't have that.")
+            return
+        item = self.world.items[found]
+        if item.usable == "heal":
+            heal = item.value or 5
+            old = self.player.hp
+            self.player.hp = min(self.player.max_hp, self.player.hp + heal)
+            self.player.inventory.remove(found)
+            w(f"You use the {item.name} and restore {self.player.hp - old} HP.")
+        elif item.usable == "light":
+            w("You light the torch. Shadows flee.")
+            # maybe reveal hidden path: if in deep_forest, reveal cavern to north
+            if self.player.location == "deep_forest" and "north" not in self.current_room().exits:
+                self.current_room().exits["north"] = "cavern"
+                w("A narrow cavern mouth is revealed to the north!")
+        elif item.usable == "equip":
+            self.equipped_weapon = found
+            w(f"You wield the {item.name}.")
+        else:
+            # other contextual uses: unlocking pedestal
+            room = self.current_room()
+            if room.locked and room.lock_key == found:
+                room.locked = False
+                self.world.flags["ruins_opened"] = True
+                w(f"You use the {item.name}. The lock clicks open.")
+            else:
+                w("You fiddle with it... nothing obvious happens.")
+
+    def inspect(self, thing_name):
+        if not thing_name:
+            w("Inspect what?")
+            return
+        # look in current room items, inventory, or enemies
+        room = self.current_room()
+        # items in room
+        for iid in room.items:
+            if thing_name.lower() in self.world.items[iid].name.lower():
+                it = self.world.items[iid]
+                w(f"{it.name}: {it.description}")
+                return
+        for iid in self.player.inventory:
+            if thing_name.lower() in self.world.items[iid].name.lower():
+                it = self.world.items[iid]
+                w(f"{it.name}: {it.description}")
+                return
+        # enemy
+        if room.enemy and thing_name.lower() in self.world.enemies[room.enemy].name.lower():
+            en = self.world.enemies[room.enemy]
+            w(f"{en.name}: {en.description} (HP: {en.hp}, Attack: {en.attack})")
+            return
+        w("You don't see that here.")
+
+    def combat(self, enemy_id):
+        if enemy_id not in self.world.enemies:
+            return
+        enemy = self.world.enemies[enemy_id]
+        w(f"Combat begin: {enemy.name} (HP {enemy.hp})")
+        e_hp = enemy.hp
+        while e_hp > 0 and self.player.hp > 0:
+            w(f"Your HP: {self.player.hp} | {enemy.name} HP: {e_hp}")
+            cmd = prompt("(attack/run/use) > ").lower()
+            if cmd.startswith("attack") or cmd == "a":
+                # player attack depends on weapon
+                base = 2
+                if self.equipped_weapon == "sword":
+                    dmg = base + 4 + random.randint(0, 2)
+                else:
+                    dmg = base + random.randint(0, 2)
+                e_hp -= dmg
+                w(f"You strike the {enemy.name} for {dmg} damage.")
+            elif cmd.startswith("use"):
+                # try to use potion if present
+                used_potion = None
+                for iid in self.player.inventory:
+                    if self.world.items[iid].usable == "heal":
+                        used_potion = iid
+                        break
+                if used_potion:
+                    heal = self.world.items[used_potion].value or 5
+                    old = self.player.hp
+                    self.player.hp = min(self.player.max_hp, self.player.hp + heal)
+                    self.player.inventory.remove(used_potion)
+                    w(f"You quickly drink a potion and restore {self.player.hp - old} HP.")
+                else:
+                    w("No usable item found!")
+                    continue
+            elif cmd.startswith("run") or cmd == "r":
+                if random.random() < 0.5:
+                    w("You managed to escape!")
+                    # move back to previous room if possible; simplest: to village green
+                    self.player.location = "village_green"
+                    self.look()
+                    return
+                else:
+                    w("You fail to escape.")
+            else:
+                w("Invalid combat action.")
+                continue
+
+            # enemy attacks if still alive
+            if e_hp > 0:
+                edmg = enemy.attack + random.randint(0, 2)
+                self.player.hp -= edmg
+                w(f"The {enemy.name} hits you for {edmg} damage.")
+                if self.player.hp <= 0:
+                    w("You have been defeated...")
+                    self.game_over()
+                    return
+
+        # enemy defeated
+        w(f"You defeated the {enemy.name}!")
+        self.world.flags[f"{enemy_id}_defeated"] = True
+        # post-combat rewards
+        if enemy_id == "goblin":
+            w("The goblin drops a small pouch of gold.")
+            self.player.gold += 10
+            # maybe reveal a secret: goblin carries key sometimes
+            if random.random() < 0.4 and "golden_key" not in self.player.inventory:
+                w("You find a small golden key on the goblin!")
+                self.player.inventory.append("golden_key")
+                self.world.flags["found_key"] = True
+        elif enemy_id == "guardian":
+            w("The guardian crumbles — a chest unlocks nearby.")
+            self.player.inventory.append("gem")
+            self.world.flags["guardian_defeated"] = True
+        elif enemy_id == "wolf":
+            w("You find nothing of value on the wolf.")
+
+    def rest(self, args=None):
+        # rest at inn
+        if self.player.location == "inn":
+            if self.player.gold >= 5:
+                self.player.gold -= 5
+                self.player.hp = self.player.max_hp
+                w("You rest at the inn. Your HP is fully restored.")
+            else:
+                w("You can't afford to rest here (5 gold).")
+        else:
+            w("You rest briefly but gain little. (Find an inn to fully rest.)")
+            self.player.hp = min(self.player.max_hp, self.player.hp + 2)
+
+    def save(self, args=None):
+        self.world.save()
+
+    def load(self, args=None):
+        self.world.load()
+        # sync local references
+        self.player = self.world.player
+
+    def help(self, args=None):
+        w("Commands: look, go <dir>, take <item>, drop <item>, use <item>, inspect <thing>, inventory, status, save, load, rest, equip <item>, map, quit, help")
+        w("Combat: when in combat, use 'attack' or 'use' (potion) or 'run'.")
+
+    def map(self, args=None):
+        # small ascii map of known rooms (static for simplicity)
+        map_text = """
+             [Ruins] (locked)
+                |
+          [Lake] --- [Forest Entrance] --- [Inn]
+                       |
+                   [Deep Forest]
+                       |
+                   [Cavern]
+                       |
+                   [Village Green]
+        """
+        w(map_text)
+
+    def equip(self, item_name):
+        if not item_name:
+            w("Equip what?")
+            return
+        for iid in self.player.inventory:
+            if item_name.lower() in self.world.items[iid].name.lower():
+                if self.world.items[iid].usable == "equip":
+                    self.equipped_weapon = iid
+                    w(f"You equip the {self.world.items[iid].name}.")
+                    return
+                else:
+                    w("You can't equip that.")
+                    return
+        w("You're not carrying that.")
+
+    def quit(self, args=None):
+        w("Goodbye, traveler.")
+        self.running = False
+
+    def game_over(self):
+        w("Game over. You can 'load' to continue from your last save, or 'quit'.")
+        # simple: let player choose to load or quit
+        while True:
+            c = prompt("(load/quit) > ").lower()
+            if c.startswith("load"):
+                self.load()
+                return
+            elif c.startswith("quit"):
+                self.quit()
+                return
+            else:
+                w("Choose 'load' or 'quit'.")
+
+    def parse(self, line: str):
+        if not line:
+            return
+        parts = line.split()
+        cmd = parts[0].lower()
+        arg = " ".join(parts[1:]).strip() if len(parts) > 1 else None
+
+        cmds = {
+            "look": self.look,
+            "l": self.look,
+            "go": lambda a=arg: self.go(a),
+            "move": lambda a=arg: self.go(a),
+            "north": lambda a=None: self.go("north"),
+            "south": lambda a=None: self.go("south"),
+            "east": lambda a=None: self.go("east"),
+            "west": lambda a=None: self.go("west"),
+            "take": self.take,
+            "get": self.take,
+            "drop": self.drop,
+            "use": self.use,
+            "inspect": self.inspect,
+            "inventory": lambda a=None: self.status(),
+            "status": self.status,
+            "save": lambda a=None: self.save(),
+            "load": lambda a=None: self.load(),
+            "rest": lambda a=None: self.rest(),
+            "help": lambda a=None: self.help(),
+            "map": lambda a=None: self.map(),
+            "equip": self.equip,
+            "quit": lambda a=None: self.quit(),
+        }
+
+        # combat commands handled in combat loop
+        if cmd in cmds:
+            try:
+                if arg:
+                    cmds[cmd](arg)
+                else:
+                    cmds[cmd]()
+            except TypeError:
+                cmds[cmd]()
+        else:
+            # fuzzy: try verbs like 'attack goblin' -> start combat
+            if cmd in ("attack", "fight", "a", "hit"):
+                if arg:
+                    # attempt to find enemy in room by name
+                    room = self.current_room()
+                    if room.enemy and arg.lower() in self.world.enemies[room.enemy].name.lower():
+                        self.combat(room.enemy)
+                    else:
+                        w("No such enemy here.")
+                else:
+                    # attack current enemy
+                    room = self.current_room()
+                    if room.enemy:
+                        self.combat(room.enemy)
+                    else:
+                        w("There's nothing to attack.")
+            else:
+                w("I don't understand that command. Type 'help'.")
+
+    def run(self):
+        self.intro()
+        while self.running:
+            try:
+                line = prompt("\n> ")
+            except (EOFError, KeyboardInterrupt):
+                w("\nExiting.")
+                break
+            self.parse(line)
+
+if __name__ == "__main__":
+    game = Game()
+    # auto-load if save exists?
+    if os.path.exists("savegame.json"):
+        w("A savegame was found. Type 'load' to load it, or continue to start new.")
+    game.run()
+
