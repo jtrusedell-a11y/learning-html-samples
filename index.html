@@ -1,52 +1,427 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>HTML Learning Test Page</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.min.css"
-    />
-  </head>
-  <body>
-    <header>
-      <h1>
-        <abbr title="HyperText Markup Language">
-          HTML
-        </abbr>
-        Learning Page
-      </h1>
-    </header>
-    <main>
-      <p>Here is some sample text in a paragraph.</p>
-      <p>I want to <a href="about.html">link something</a>.</p>
-      <figure>
-        <img
-          src="assets/meche.png"
-          alt="Mèche, My Cat"
-          width="600"
-          height="438"
-        />
-        <figcaption>This is Mèche, my cat!</figcaption>
-      </figure>
-      <figure>
-        <blockquote>Hello World!</blockquote>
-        <figcaption>
-          Bill Gates in
-          <cite>My First Program</cite>,
-          probably
-        </figcaption>
-      </figure>
-    </main>
-    <footer>
-      <nav>
-        <ul>
-          <li><a href="#">Here</a></li>
-          <li><a href="#">Also here</a></li>
-          <li><a href="#">The same place</a></li>
-        </ul>
-      </nav>
-    </footer>
-  </body>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Noodle — Jarvis</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.min.css">
+<style>
+  /* Layout & color */
+  body { background:#000; color:#fff; font-family:"Comic Sans MS",cursive, sans-serif; text-align:center; margin:0; padding:0; transition:background .25s,color .25s; }
+  body.light { background:#fff; color:#000; }
+  h1 { font-size:2.6rem; margin:24px 0; animation:bounce 1.5s infinite alternate; }
+  @keyframes bounce{0%{transform:translateY(0)}100%{transform:translateY(-10px)}}
+  main { background:rgba(255,255,255,0.05); margin:28px auto; padding:26px; border-radius:18px; max-width:720px; box-shadow:0 8px 30px rgba(255,255,255,0.06); }
+  body.light main { background: rgba(0,0,0,0.05); }
+
+  /* Buttons */
+  a.button, #chat-send, #theme-toggle { background:#fff; color:#000; font-weight:700; border:none; border-radius:12px; padding:10px 20px; text-decoration:none; display:inline-block; }
+  a.button:hover, #chat-send:hover, #theme-toggle:hover { transform:scale(1.05); }
+
+  /* Search */
+  .search-form { display:flex; justify-content:center; gap:8px; margin-top:16px; }
+  .search-form input { padding:10px 12px; border-radius:20px; border:none; outline:none; width:60%; max-width:420px; }
+
+  /* Timer */
+  #timer-container { margin-top:18px; font-weight:700; }
+  #progress-bar{ width:100%; background:#333; height:20px; border-radius:14px; overflow:hidden; margin-top:8px;}
+  #progress{ height:100%; width:100%; background:#fff; transition:width .2s linear; }
+
+  /* Chat */
+  #chat-button{ position:fixed; right:20px; bottom:20px; width:64px; height:64px; border-radius:50%; background:#fff; color:#000; border:none; font-weight:700; z-index:1000; box-shadow:0 10px 30px rgba(255,255,255,0.08); cursor:pointer;}
+  #chat-box{ position:fixed; right:20px; bottom:100px; width:340px; max-height:540px; display:none; flex-direction:column; background:#fff; color:#000; border-radius:12px; box-shadow:0 12px 35px rgba(0,0,0,0.35); overflow:hidden; z-index:999;}
+  #chat-header{ background:#fff; padding:8px 12px; font-weight:700; text-align:left; border-bottom:1px solid #eee; }
+  #chat-messages{ padding:12px; flex:1; overflow:auto; max-height:420px; display:flex; flex-direction:column; gap:8px; }
+  .chat-msg{ padding:8px 12px; border-radius:12px; max-width:85%; word-break:break-word; }
+  .user-msg{ background:#d0d0d0; align-self:flex-end; color:#000; }
+  .bot-msg{ background:#f1f1f1; align-self:flex-start; color:#000; }
+  #chat-input-area{ display:flex; gap:8px; padding:10px; background:#fafafa; }
+  #chat-input{ flex:1; padding:8px 12px; border-radius:18px; border:1px solid #ddd; outline:none; }
+
+  /* small */
+  footer{ margin-top:18px; padding:10px 0; color:inherit; }
+  img.chat-photo{ width:100%; border-radius:10px; }
+
+  @media (max-width:640px){
+    #chat-box{ right:10px; left:10px; width:auto; }
+    main{ margin:18px; }
+  }
+</style>
+</head>
+<body>
+
+<button id="theme-toggle">Toggle Dark/Light</button>
+
+<header><h1>Noodle</h1></header>
+
+<main>
+  <p>Welcome to <strong>Noodle</strong> — learning, games, and Jarvis the assistant.</p>
+
+  <form class="search-form" action="https://www.google.com/search" method="get" target="_blank" onsubmit="">
+    <input type="text" name="q" placeholder="Search the web..." required />
+    <button type="submit">Search</button>
+  </form>
+
+  <div style="margin-top:14px">
+    <a href="#about" class="button">Learn More</a>
+    <a href="https://pizza-edition-games.pages.dev/" id="play-games" class="button">Play Games</a>
+  </div>
+
+  <div id="timer-container">
+    <div id="timer-message"></div>
+    <div id="progress-bar"><div id="progress"></div></div>
+  </div>
+</main>
+
+<section id="about">
+  <h2>About Noodle</h2>
+  <p>Noodle is designed to make learning fun — with Jarvis, games, and exploration.</p>
+</section>
+
+<footer>
+  <p>© 2025 Noodle Inc. | Made with care</p>
+</footer>
+
+<!-- Chat UI -->
+<button id="chat-button">AI</button>
+
+<div id="chat-box" role="dialog" aria-label="Jarvis chat">
+  <div id="chat-header">Jarvis Assistant</div>
+  <div id="chat-messages" aria-live="polite"></div>
+
+  <div id="chat-input-area">
+    <input id="chat-input" type="text" placeholder="Say 'Hey Jarvis' to activate" autocomplete="off" />
+    <button id="chat-send">Send</button>
+  </div>
+</div>
+
+<!-- Pancakes audio: replace PASTE_BASE64_HERE with your Base64 string (data:audio/mp3;base64,...) -->
+<audio id="pancakes-sound" src="data:audio/mp3;base64,PASTE_BASE64_HERE"></audio>
+
+<script>
+/* ========= Config & helpers ========= */
+const playGamesBtn = document.getElementById('play-games');
+const chatBtn = document.getElementById('chat-button');
+const chatBox = document.getElementById('chat-box');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+const chatMessages = document.getElementById('chat-messages');
+const pancakesAudio = document.getElementById('pancakes-sound');
+const themeToggle = document.getElementById('theme-toggle');
+const timerMessage = document.getElementById('timer-message');
+const progress = document.getElementById('progress');
+
+const GAME_TIME = 15*60*1000;
+const RESET_TIME = 12*60*60*1000;
+
+/* local state */
+let assistantActive = false;
+let startTime = parseInt(localStorage.getItem('gameStartTime')) || 0;
+let resetTime = parseInt(localStorage.getItem('resetTime')) || 0;
+let interval = null;
+
+/* Replace with your OpenAI API key to enable ChatGPT fallback */
+const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"; // <--- put your key here if you want ChatGPT answers
+
+/* Utility: safe arithmetic detection & evaluate */
+function isSafeMath(expr){
+  // allow digits, spaces, parentheses, + - * / ^ . %
+  return /^[0-9+\-*/().%\s^]+$/.test(expr);
+}
+function safeEvalMath(expr){
+  // replace ^ with ** for exponent if present
+  try {
+    const sanitized = expr.replace(/\^/g, "**").replace(/%/g, "/100");
+    // eslint-disable-next-line no-new-func
+    const fn = new Function("return (" + sanitized + ")"); // used safely after regex check
+    return fn();
+  } catch(e){
+    return null;
+  }
+}
+
+/* Basic literature answers (small built-in knowledge) */
+const LIT_KB = {
+  "who wrote romeo and juliet": "William Shakespeare wrote Romeo and Juliet.",
+  "who wrote 1984": "George Orwell wrote 1984.",
+  "who wrote the great gatsby": "F. Scott Fitzgerald wrote The Great Gatsby.",
+  "who wrote moby dick": "Herman Melville wrote Moby-Dick.",
+  "who wrote to kill a mockingbird": "Harper Lee wrote To Kill a Mockingbird."
+};
+function queryLiterature(question){
+  const q = question.toLowerCase();
+  for(const k of Object.keys(LIT_KB)){
+    if(q.includes(k)) return LIT_KB[k];
+  }
+  // small pattern matches
+  if(q.includes("who wrote")) {
+    const title = q.replace("who wrote", "").trim();
+    if(title) return `I don't have that in my small local list — want me to look it up?`;
+  }
+  return null;
+}
+
+/* Choose a male/deep voice */
+function getRobotVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  if(!voices || voices.length === 0) return null;
+  // Prefer names with "male", "deep", "Alex", "Google UK English Male", etc.
+  const pref = voices.find(v =>
+    /male|deep|alex|tom|david|john|matt|google uk english male/i.test(v.name)
+  );
+  return pref || voices[0];
+}
+
+/* Speak helper with deep robotic style */
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  const utter = new SpeechSynthesisUtterance(text);
+  const v = getRobotVoice();
+  if(v) utter.voice = v;
+  utter.pitch = 0.35;   // deeper
+  utter.rate = 0.95;    // slightly slower
+  utter.volume = 1;
+  // cancel previous for clarity, then speak
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
+}
+
+/* Display message in chat */
+function addMessage(text, sender='bot'){
+  const el = document.createElement('div');
+  el.className = 'chat-msg ' + (sender === 'user' ? 'user-msg' : 'bot-msg');
+  // allow HTML for images only when adding images programmatically elsewhere
+  el.textContent = text;
+  chatMessages.appendChild(el);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return el;
+}
+
+/* Add image element to chat (used by camera snapshot) */
+function addImageToChat(dataUrl){
+  const el = document.createElement('img');
+  el.src = dataUrl;
+  el.className = 'chat-photo';
+  el.style.maxWidth = '100%';
+  chatMessages.appendChild(el);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+/* OpenAI Chat completion helper (fallback) */
+async function askChatGPT(prompt){
+  if(!OPENAI_API_KEY) return "I don't have the API key set — please add your OpenAI API key to enable ChatGPT responses.";
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 600
+      })
+    });
+    const data = await res.json();
+    if(data?.choices && data.choices[0]?.message?.content) return data.choices[0].message.content.trim();
+    return "I couldn't get an answer from the API.";
+  } catch(err){
+    console.error("ChatGPT error:", err);
+    return "Error contacting ChatGPT.";
+  }
+}
+
+/* ========= Jarvis command logic ========= */
+async function botReply(input){
+  input = (input||"").toLowerCase().trim();
+  if(!assistantActive){
+    if(input.includes('hey jarvis')){
+      assistantActive = true;
+      return "Jarvis activated. How can I help you?";
+    } else {
+      // ignore other inputs until activated
+      return "";
+    }
+  }
+
+  // exact keyword responses (special triggers)
+  if(input.includes('clanker')) {
+    return "SHUT UP";
+  }
+
+  if(input.includes('pancakes')) {
+    try { if(pancakesAudio) pancakesAudio.play(); } catch(e) { console.warn(e); }
+    return "Mini Pekka!";
+  }
+
+  if(input.includes('gay')) {
+    // attempt to take a snapshot, show image in chat (requires user camera permission)
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.createElement('video');
+        video.style.display = 'none';
+        video.srcObject = stream;
+        document.body.appendChild(video);
+        await video.play();
+
+        // wait a short moment for camera to initialize
+        await new Promise(r => setTimeout(r, 650));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.min(640, video.videoWidth || 640);
+        canvas.height = Math.min(480, video.videoHeight || 480);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        // insert image in chat
+        addImageToChat(dataUrl);
+
+        // clean up
+        video.pause();
+        if(video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); }
+        document.body.removeChild(video);
+      } catch(err){
+        console.warn("Camera capture failed:", err);
+        // optionally show an error message in chat
+        addMessage("Could not access camera or capture image.", 'bot');
+      }
+    } else {
+      addMessage("Camera not supported in this browser.", 'bot');
+    }
+    return "Remember, I know everything";
+  }
+
+  if(input.includes('aliens')) {
+    return "This is the United States of America and we know you know";
+  }
+
+  // Basic math handling
+  // check for math-like substring: only safe chars
+  if(isSafeMath(input)) {
+    const mathResult = safeEvalMath(input);
+    if(mathResult !== null && !Number.isNaN(mathResult)) {
+      return `Result: ${mathResult}`;
+    }
+    // else fallthrough to literature / ChatGPT
+  }
+
+  // Basic literature lookup
+  const lit = queryLiterature(input);
+  if(lit) return lit;
+
+  // Fallback to ChatGPT for anything else
+  const reply = await askChatGPT(input);
+  return reply;
+}
+
+/* ========= message sending wrapper ========= */
+async function sendMessage(text){
+  text = (text||"").trim();
+  if(!text) return;
+  // show user message
+  addMessage(text, 'user');
+
+  // process
+  const reply = await botReply(text);
+  if(reply) {
+    addMessage(reply, 'bot');
+    // speak reply deep/robotic
+    speak(reply);
+  }
+}
+
+/* ========= UI bindings ========= */
+/* chat open toggle */
+chatBtn.addEventListener('click', () => {
+  chatBox.style.display = chatBox.style.display === 'flex' ? 'none' : 'flex';
+  chatBox.style.flexDirection = 'column';
+  if(chatBox.style.display === 'flex') chatInput.focus();
+});
+
+/* send by button or enter */
+chatSend.addEventListener('click', () => { sendMessage(chatInput.value); chatInput.value = ''; });
+chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter'){ sendMessage(chatInput.value); chatInput.value = ''; } });
+
+/* theme toggle */
+if(localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+themeToggle.addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+});
+
+/* Timer logic (unchanged behavior) */
+function updateTimer(){
+  const now = Date.now();
+  if(resetTime && now >= resetTime){
+    startTime = 0;
+    localStorage.setItem('gameStartTime', 0);
+    localStorage.setItem('resetTime', 0);
+    if(playGamesBtn){ playGamesBtn.style.pointerEvents = 'auto'; playGamesBtn.style.opacity = 1; }
+    progress.style.width = '100%';
+    timerMessage.textContent = '';
+  }
+  if(!startTime) return;
+  let elapsed = now - startTime;
+  if(elapsed >= GAME_TIME){
+    if(playGamesBtn){ playGamesBtn.style.pointerEvents = 'none'; playGamesBtn.style.opacity = 0.5; }
+    timerMessage.textContent = "Daily limit reached. Reset in 12 hours.";
+    progress.style.width = '0%';
+    if(!resetTime){ resetTime = now + RESET_TIME; localStorage.setItem('resetTime', resetTime); }
+    return;
+  }
+  const remaining = GAME_TIME - elapsed;
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  timerMessage.textContent = `Time remaining: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  progress.style.width = `${(remaining/GAME_TIME)*100}%`;
+}
+playGamesBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  const now = Date.now();
+  if(!startTime){ startTime = now; localStorage.setItem('gameStartTime', startTime); }
+  window.open(playGamesBtn.href, '_blank');
+  if(!interval) interval = setInterval(updateTimer, 1000);
+});
+if(startTime) interval = setInterval(updateTimer, 1000);
+updateTimer();
+
+/* ========= Auto-open chat on typing anywhere ========= */
+document.addEventListener('keydown', (e) => {
+  const activeTag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+  if(activeTag === 'input' || activeTag === 'textarea') return;
+  if(chatBox.style.display !== 'flex') { chatBox.style.display = 'flex'; chatBox.style.flexDirection = 'column'; }
+  chatInput.focus();
+});
+
+/* ========= Voice recognition (continuous) ========= */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SpeechRecognition){
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.results.length-1][0].transcript.trim();
+      // show what user said then process
+      sendMessage(transcript);
+    };
+    recognition.onerror = (e) => {
+      console.log("Recognition error:", e);
+    };
+    recognition.start();
+  } catch(err) {
+    console.warn("Speech recognition init error:", err);
+  }
+} else {
+  console.log("SpeechRecognition not supported in this browser.");
+}
+
+/* Ensure voices loaded for getVoices() */
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => { /* nothing needed, just ensures voices ready */ };
+}
+
+/* ======= End script ======= */
+</script>
+</body>
 </html>
