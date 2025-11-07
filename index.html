@@ -1,52 +1,188 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>HTML Learning Test Page</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.min.css"
-    />
-  </head>
-  <body>
-    <header>
-      <h1>
-        <abbr title="HyperText Markup Language">
-          HTML
-        </abbr>
-        Learning Page
-      </h1>
-    </header>
-    <main>
-      <p>Here is some sample text in a paragraph.</p>
-      <p>I want to <a href="about.html">link something</a>.</p>
-      <figure>
-        <img
-          src="assets/meche.png"
-          alt="Mèche, My Cat"
-          width="600"
-          height="438"
-        />
-        <figcaption>This is Mèche, my cat!</figcaption>
-      </figure>
-      <figure>
-        <blockquote>Hello World!</blockquote>
-        <figcaption>
-          Bill Gates in
-          <cite>My First Program</cite>,
-          probably
-        </figcaption>
-      </figure>
-    </main>
-    <footer>
-      <nav>
-        <ul>
-          <li><a href="#">Here</a></li>
-          <li><a href="#">Also here</a></li>
-          <li><a href="#">The same place</a></li>
-        </ul>
-      </nav>
-    </footer>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Learning Page</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.min.css">
+  <style>
+    body {
+      font-family: "Times New Roman", Times, serif;
+      background-color: white;
+    }
+    #jarvis {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      max-height: 400px;
+      background: #f1f1f1;
+      border: 2px solid #333;
+      border-radius: 10px;
+      padding: 10px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+    #jarvis header {
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #timeIcon {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: #333;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      z-index: 1000;
+    }
+    #recentSearches {
+      margin-top: 5px;
+      font-size: 0.9rem;
+    }
+    #recentSearches li {
+      cursor: pointer;
+      color: blue;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div id="timeIcon"></div>
+
+  <header>
+    <h1>AI Learning Page</h1>
+  </header>
+
+  <main>
+    <p>Use the search box below to find information from trusted sources.</p>
+
+    <form id="searchForm">
+      <input type="text" id="searchQuery" placeholder="Search..." required>
+      <button type="submit">Search</button>
+    </form>
+
+    <ul id="recentSearches"></ul>
+
+    <button id="toggleJarvis">Chat with Jarvis</button>
+
+    <div id="jarvis">
+      <header>Jarvis <button id="closeJarvis">X</button></header>
+      <div id="jarvisOutput"></div>
+      <input type="text" id="jarvisInput" placeholder="Ask Jarvis something...">
+      <button id="voiceSearch">🎤 Voice Search</button>
+      <button id="turnOffJarvis">Turn Jarvis Off</button>
+    </div>
+  </main>
+
+  <script>
+    // --- Time Icon ---
+    function updateTime() {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2,'0');
+      const minutes = now.getMinutes().toString().padStart(2,'0');
+      document.getElementById('timeIcon').textContent = `${hours}:${minutes}`;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    // --- Search Form ---
+    const allowedSources = [
+      "site:britannica.com",
+      "site:ducksters.com",
+      "site:nationalgeographic.com",
+      "site:kids.nationalgeographic.com",
+      "site:.edu",
+      "site:.org"
+    ];
+
+    const searchHistory = [];
+    const recentSearchesEl = document.getElementById('recentSearches');
+
+    function updateRecentSearches() {
+      recentSearchesEl.innerHTML = "";
+      searchHistory.slice(-5).reverse().forEach(term => {
+        const li = document.createElement('li');
+        li.textContent = term;
+        li.onclick = () => performSearch(term);
+        recentSearchesEl.appendChild(li);
+      });
+    }
+
+    function performSearch(query) {
+      searchHistory.push(query);
+      updateRecentSearches();
+      const sourceQuery = allowedSources.join(" OR ");
+      const fullQuery = `${query} (${sourceQuery})`;
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`, "_blank");
+    }
+
+    document.getElementById('searchForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const query = document.getElementById('searchQuery').value.trim();
+      if(query) performSearch(query);
+    });
+
+    // --- Jarvis Toggle ---
+    const jarvis = document.getElementById('jarvis');
+    document.getElementById('toggleJarvis').addEventListener('click', () => jarvis.style.display = 'block');
+    document.getElementById('closeJarvis').addEventListener('click', () => jarvis.style.display = 'none');
+    document.getElementById('turnOffJarvis').addEventListener('click', () => {
+      jarvis.style.display = 'none';
+      speechSynthesis.cancel();
+    });
+
+    // --- Jarvis AI Chat ---
+    const jarvisOutput = document.getElementById('jarvisOutput');
+
+    async function getAIResponse(query) {
+      // Call OpenAI API (requires server-side proxy or API key)
+      // This is a client-side fetch example for demonstration
+      const response = await fetch('YOUR_SERVER_ENDPOINT', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query })
+      });
+      const data = await response.json();
+      return data.response || "Sorry, I couldn't get an answer.";
+    }
+
+    async function sendJarvisQuery(query) {
+      jarvisOutput.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
+      jarvisOutput.scrollTop = jarvisOutput.scrollHeight;
+
+      const response = await getAIResponse(query);
+      jarvisOutput.innerHTML += `<p><strong>Jarvis:</strong> ${response}</p>`;
+      jarvisOutput.scrollTop = jarvisOutput.scrollHeight;
+
+      const utterance = new SpeechSynthesisUtterance(response);
+      window.speechSynthesis.speak(utterance);
+    }
+
+    document.getElementById('jarvisInput').addEventListener('keypress', e => {
+      if(e.key === 'Enter') {
+        const query = e.target.value.trim();
+        if(query) {
+          e.target.value = "";
+          sendJarvisQuery(query);
+        }
+      }
+    });
+
+    // --- Voice Search ---
+    document.getElementById('voiceSearch').addEventListener('click', () => {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.start();
+      recognition.onresult = e => {
+        const transcript = e.results[0][0].transcript;
+        document.getElementById('jarvisInput').value = transcript;
+        document.getElementById('jarvisInput').dispatchEvent(new KeyboardEvent('keypress', {'key':'Enter'}));
+      };
+    });
+  </script>
+</body>
 </html>
